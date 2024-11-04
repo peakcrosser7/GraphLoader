@@ -1,0 +1,1 @@
+add_executable(pangolin_convert pangolin_convert.cpp)

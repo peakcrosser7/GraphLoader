@@ -1,1 +1,2 @@
 add_subdirectory(igraph)
+add_subdirectory(pangolin)
