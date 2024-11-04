@@ -19,8 +19,6 @@ public:
 
     static PangolinMeta<vertex_t> 
     Load(const std::string& filepath, graph_loader::LoaderOpts opts) {
-        assert(!opts.is_directed);
-
         PangolinMeta<vertex_t> meta;
 
         auto pre_load_func = [&](vertex_t num_v, edge_t num_e) {
@@ -29,11 +27,11 @@ public:
 
         auto edge_load_func = [&](edge_t eidx, vertex_t& src, vertex_t& dst) -> bool {
             meta.adj_list[src].push_back(dst);
-            if (src != dst) {
-                meta.adj_list[dst].push_back(src);
-            }
             meta.max_degree = std::max<vertex_t>(meta.max_degree, meta.adj_list[src].size());
-            meta.max_degree = std::max<vertex_t>(meta.max_degree, meta.adj_list[dst].size());
+            if (opts.undirected() && src != dst) {
+                meta.adj_list[dst].push_back(src);
+                meta.max_degree = std::max<vertex_t>(meta.max_degree, meta.adj_list[dst].size());
+            }
             return true;
         };
 

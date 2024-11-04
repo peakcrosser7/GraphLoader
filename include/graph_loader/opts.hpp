@@ -25,6 +25,15 @@ struct LoaderOpts {
 
     std::function<void(std::string&, LoaderOpts&)> load_banner_func;
 
+
+    bool directed() const {
+        return is_directed;
+    }
+
+    bool undirected() const {
+        return !is_directed;
+    }
+
     LoaderOpts& set_is_directed(bool directed) {
         is_directed = directed;
         return *this;
