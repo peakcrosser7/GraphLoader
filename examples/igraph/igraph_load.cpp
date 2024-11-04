@@ -1,5 +1,5 @@
-#include <string>
 #include <iostream>
+#include <string>
 
 #include <igraph.h>
 
@@ -7,12 +7,13 @@
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        std::cout << "usage: " << argv[0] << " <mtx_path>\n";
-        exit(-1);
+        std::cout << "Usage: " << argv[0] << " <graph_file>\n";
+        return -1;
     }
-    std::string filename = argv[1];
 
-    igraph_t g = IgraphLoader<int, int>::Load(filename, 
+    std::string filepath = argv[1];
+
+    igraph_t g = IgraphLoader<int, int>::Load(filepath, 
         graph_loader::LoaderOpts::Snap().set_is_directed(false));
 
     int num_v = igraph_vcount(&g);

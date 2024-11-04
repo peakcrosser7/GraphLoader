@@ -7,6 +7,7 @@
 
 #include "graph_loader/loader.hpp"
 
+
 template <typename vertex_t, typename edge_t, typename weight_t>
 class GunrockLoader {
 public:
@@ -15,7 +16,7 @@ public:
     using memory_space_t = gunrock::memory::memory_space_t;
     using coo_t = gunrock::format::coo_t<memory_space_t::host, vertex_t, edge_t, weight_t>; 
 
-    static auto Load(const std::string& filename, graph_loader::LoaderOpts opts) {
+    static auto Load(const std::string& filepath, graph_loader::LoaderOpts opts) {
         std::optional<coo_t> coo;
         auto pre_load_func = [&](vertex_t num_v, edge_t num_e) {
             coo.emplace(num_v, num_v, num_e);
@@ -28,7 +29,7 @@ public:
             return true;
         };
 
-        Loader::Load(filename, opts, edge_load_func, pre_load_func);
+        Loader::Load(filepath, opts, edge_load_func, pre_load_func);
         PostLoad_(coo.value(), opts);
 
         return coo.value();

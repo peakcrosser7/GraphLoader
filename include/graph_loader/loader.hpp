@@ -136,8 +136,9 @@ private:
         while(fin.good() && !fin.eof()) {
             std::getline(fin, line);
             if (do_check) {
-                line = StrStrip(line, opts.line_strips);
-                if (line.empty() || StrStartWith(line, opts.comment_prefix)) {
+                line = utils::StrStrip(line, opts.line_strips);
+                if (line.empty() 
+                    || (!opts.comment_prefix.empty() && utils::StrStartWith(line, opts.comment_prefix))) {
                     continue;
                 }
             }
@@ -147,7 +148,7 @@ private:
     }
 
     static std::ifstream LoadPrepare_(const std::string& filepath, LoaderOpts& opts) {
-        throw_if_exception(!StrEndWith(filepath, opts.file_ext),
+        throw_if_exception(!utils::StrEndWith(filepath, opts.file_ext),
                            "File should have \"" + opts.file_ext + "\" file extension.");
         
         std::ifstream fin(filepath);
@@ -250,13 +251,13 @@ private:
 
         pToken = strtok_r(line.data(), sep.c_str(), &pSave);
         throw_if_exception(pToken == nullptr, "fail to load num_v when calling ParseHeader2_");
-        auto num_v_ = std::strtoul(pToken, nullptr, 10);
+        auto num_v_ = utils::StrToNum<>(pToken);
         throw_if_exception(num_v_ >= std::numeric_limits<vertex_t>::max(),
                         "vertex_t overflow when calling ParseHeader2_");
 
         pToken = strtok_r(nullptr, sep.c_str(), &pSave);
         throw_if_exception(pToken == nullptr, "fail to~ load num_e when calling ParseHeader2_");
-        auto num_e_ = std::strtoul(pToken, nullptr, 10);
+        auto num_e_ = utils::StrToNum<>(pToken);
         throw_if_exception(num_e_ >= std::numeric_limits<edge_t>::max(), "edge_t overflow when calling ParseHeader2_");
 
         num_v = static_cast<vertex_t>(num_v_);
@@ -274,11 +275,11 @@ private:
 
         pToken = strtok_r(line.data(), sep.c_str(), &pSave);
         throw_if_exception(pToken == nullptr, "fail to load num_v when calling ParseHeader3_");
-        auto num_rows = std::strtoul(pToken, nullptr, 10);
+        auto num_rows = utils::StrToNum<>(pToken);
 
         pToken = strtok_r(nullptr, sep.c_str(), &pSave);
         throw_if_exception(pToken == nullptr, "fail to load num_cols when calling ParseHeader3_");
-        auto num_cols = std::strtoul(pToken, nullptr, 10);
+        auto num_cols = utils::StrToNum<>(pToken);
 
         throw_if_exception(num_rows >= std::numeric_limits<vertex_t>::max() ||
             num_cols >= std::numeric_limits<vertex_t>::max(),
@@ -288,7 +289,7 @@ private:
 
         pToken = strtok_r(nullptr, sep.c_str(), &pSave);
         throw_if_exception(pToken == nullptr, "fail to load num_e when calling ParseHeader3_");
-        auto nnz = std::strtoul(pToken, nullptr, 10);
+        auto nnz = utils::StrToNum<>(pToken);
         throw_if_exception(nnz >= std::numeric_limits<edge_t>::max(), "edge_t overflow when calling ParseHeader3_");
 
         num_v = static_cast<vertex_t>(num_rows);
@@ -355,14 +356,14 @@ private:
                 // LOG_WARNING("can not extract source from (", pLog, ")");
                 continue;
             }
-            vertex_t src = vertex_t(std::strtoul(pToken, nullptr, 10));
+            vertex_t src = utils::StrToNum<vertex_t>(pToken);
 
             pToken = strtok_r(nullptr, opts.line_sep.c_str(), &pSave);
             if (nullptr == pToken) {
                 // LOG_WARNING("can not extract destination from (", pLog, ")");
                 continue;
             }
-            vertex_t dst = vertex_t(std::strtoul(pToken, nullptr, 10));
+            vertex_t dst = utils::StrToNum<vertex_t>(pToken);
             if (opts.rm_self_loop && src == dst) {
                 continue;
             }

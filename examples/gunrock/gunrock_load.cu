@@ -1,5 +1,5 @@
-#include <string>
 #include <iostream>
+#include <string>
 
 #include <gunrock/graph/graph.hxx>
 
@@ -11,17 +11,18 @@ using namespace gunrock::memory;
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        std::cout << "usage: " << argv[0] << " <mtx_path>\n";
-        exit(-1);
+        std::cout << "Usage: " << argv[0] << " <graph_file>\n";
+        return -1;
     }
-    std::string filename = argv[1];
+
+    std::string filepath = argv[1];
 
     using vertex_t = int;
     using edge_t = int;
     using weight_t = float;
     using csr_t = gunrock::format::csr_t<memory_space_t::device, vertex_t, edge_t, weight_t>;
 
-    auto coo = GunrockLoader<vertex_t, edge_t, weight_t>::Load(filename, LoaderOpts::MatrixMarket());
+    auto coo = GunrockLoader<vertex_t, edge_t, weight_t>::Load(filepath, LoaderOpts::MatrixMarket());
 
     csr_t csr;
     csr.from_coo(coo);

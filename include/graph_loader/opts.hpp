@@ -14,7 +14,7 @@ enum class BasedIndex {
 
 struct LoaderOpts {
     std::string file_ext = "";
-    std::string comment_prefix = "#";
+    std::string comment_prefix = "";
     std::string line_sep = " ";
     std::string line_strips = " \t\n\r";
     BasedIndex based_index = BasedIndex::BASED_0_TO_0;
@@ -60,6 +60,14 @@ struct LoaderOpts {
         opts.line_sep = "\t";
         opts.header_cnt = 0;
         opts.do_reorder = true;
+
+        return opts;
+    }
+
+    static LoaderOpts WithHeader() {
+        LoaderOpts opts;
+        opts.line_sep = " ";
+        opts.header_cnt = 2;
 
         return opts;
     }

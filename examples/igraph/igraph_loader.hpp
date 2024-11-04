@@ -16,7 +16,7 @@ struct IgraphLoader<int, int> {
     using edge_t = int;
     using Loader = graph_loader::CoreLoader<vertex_t, edge_t, graph_loader::empty_t>;
 
-    static igraph_t Load(const std::string& filename, graph_loader::LoaderOpts opts) {
+    static igraph_t Load(const std::string& filepath, graph_loader::LoaderOpts opts) {
         igraph_vector_int_t edges;
 
         auto pre_load_func = [&](vertex_t num_v, edge_t num_e) {
@@ -29,7 +29,7 @@ struct IgraphLoader<int, int> {
             return true;
         };
 
-        Loader::Load(filename, opts, edge_load_func, pre_load_func);
+        Loader::Load(filepath, opts, edge_load_func, pre_load_func);
 
         igraph_t g;
         igraph_create(&g, &edges, 0, opts.is_directed);
