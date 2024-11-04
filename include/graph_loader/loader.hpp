@@ -6,6 +6,7 @@
 #include "exception.hpp"
 #include "opts.hpp"
 #include "helper.hpp"
+#include "log.hpp"
 #include "utils.hpp"
 
 namespace graph_loader {
@@ -85,8 +86,6 @@ private:
         std::unordered_map<vertex_t, vertex_t>& reordered_map,
         const edge_load_func_t& edge_load_func    // bool FUNC(edge_t& eidx, vertex_t& src, vertex_t& dst, value_t& val)
     ) {
-        // std::unordered_map<vertex_t, vertex_t> reordered_map;
-
         vertex_t base = (based_index == BasedIndex::BASED_0_TO_0 || based_index == BasedIndex::BASED_1_TO_0) ? 0 : 1;
         auto reorder_vid = [&reordered_map, base](vertex_t vid) -> vertex_t {
             auto [it,_] = reordered_map.insert({vid, vertex_t(reordered_map.size() + base)});
@@ -345,22 +344,24 @@ private:
         std::string line;
         char* pSave  = nullptr;
         char* pToken = nullptr;
-
+        char* pLog = nullptr;
         for (edge_t eidx = 0; true;) {
             if (!LoadLine_(fin, line, opts)) {
                 break;
             }
 
+            pLog = line.data();
             pToken = strtok_r(line.data(), opts.line_sep.c_str(), &pSave);
             if (nullptr == pToken) {
-                // LOG_WARNING("can not extract source from (", pLog, ")");
+                LOG_WARNING("can not extract source from (", pLog, ")");
                 continue;
             }
             vertex_t src = utils::StrToNum<vertex_t>(pToken);
 
+            pLog = pToken;
             pToken = strtok_r(nullptr, opts.line_sep.c_str(), &pSave);
             if (nullptr == pToken) {
-                // LOG_WARNING("can not extract destination from (", pLog, ")");
+                LOG_WARNING("can not extract destination from (", pLog, ")");
                 continue;
             }
             vertex_t dst = utils::StrToNum<vertex_t>(pToken);
@@ -368,7 +369,7 @@ private:
                 continue;
             }
 
-            // std::cout << "debug: " << src << " " << dst << std::endl;
+            LOG_DEBUG("src=", src, "dst=", dst);
             if constexpr (std::is_same_v<value_t, empty_t>) {
                 if (edge_load_func(eidx, src, dst)) {
                     ++eidx;
@@ -381,7 +382,7 @@ private:
                 }
             }
 
-            // std::cout << "debug load end\n";
+            LOG_DEBUG("end of LoadEdges_()");
         }
     }
 
@@ -397,7 +398,6 @@ private:
     ) {
         std::ifstream fin = LoadPrepare_(filepath, opts);
 
-        // std::cout << "debug 0\n";
         pre_load_func();
 
         LoadEdges_(fin, opts, edge_load_func, weight_parse_func);
@@ -414,10 +414,8 @@ private:
     ) {
         std::ifstream fin = LoadPrepare_(filepath, opts);
 
-        // std::cout << "debug 0\n";
         LoadHeader_(fin, opts, pre_load_func);
         
-        // std::cout << "debug 1\n";        
         LoadEdges_(fin, opts, edge_load_func, weight_parse_func);     
     }
 };
