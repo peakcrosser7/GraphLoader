@@ -15,7 +15,7 @@ template <typename vertex_t, typename edge_t, typename value_t>
 class CoreLoader { 
 public:
     template <typename edge_load_func_t, 
-              typename pre_load_func_t = decltype(dummy_func), 
+              typename pre_load_func_t = decltype(&dummy_func), 
               typename weight_parse_func_t = decltype(general_weight_parse<value_t>)>
     static void Load(
         const std::string& filepath, 
@@ -32,7 +32,7 @@ public:
     }
 
     template <typename edge_load_func_t, 
-              typename pre_load_func_t = decltype(dummy_func), 
+              typename pre_load_func_t = decltype(&dummy_func), 
               typename weight_parse_func_t = decltype(general_weight_parse<value_t>)>
     static void LoadWithoutHeader(
         const std::string& filepath, 
@@ -57,7 +57,7 @@ public:
     }
 
     template <typename edge_load_func_t, 
-              typename pre_load_func_t = decltype(dummy_func), 
+              typename pre_load_func_t = decltype(&dummy_func), 
               typename weight_parse_func_t = decltype(general_weight_parse<value_t>)>
     static void LoadWithHeader(
         const std::string& filepath, 

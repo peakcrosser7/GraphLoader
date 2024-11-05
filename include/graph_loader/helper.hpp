@@ -25,7 +25,6 @@ general_weight_parse(const char* str) {
     return {};
 }
 
-// use lambda to help decltype
-auto dummy_func = []() {};
+inline void dummy_func() {};
 
 } // namespace graph_loader
