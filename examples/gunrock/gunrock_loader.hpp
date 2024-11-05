@@ -37,7 +37,7 @@ public:
 
 private:
     static void PostLoad_(coo_t& coo, const graph_loader::LoaderOpts& opts) {
-        if (!opts.is_directed) {  // duplicate off diagonal entries
+        if (opts.undirected()) {  // duplicate off diagonal entries
             vertex_t off_diagonals = 0;
             for (vertex_t i = 0; i < coo.number_of_nonzeros; ++i) {
                 if (coo.row_indices[i] != coo.column_indices[i])

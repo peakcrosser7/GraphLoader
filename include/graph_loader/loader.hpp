@@ -66,12 +66,12 @@ public:
         const pre_load_func_t& pre_load_func = dummy_func,   // void FUNC() OR void FUNC(vertex_t num_v, edge_t num_e)
         const weight_parse_func_t& weight_parse_func = general_weight_parse<value_t>    // value_t FUNC(const char* str)
     ) {
-        // std::cout << "debug 1\n";        
         if (opts.do_reorder) {
+            LOG_DEBUG("LoadWithHeader: will reorder");
             std::unordered_map<vertex_t, vertex_t> reordered_map;
             auto edge_load_wrapper = MakeReorderedEdgeLoader_(opts.based_index, reordered_map, edge_load_func);
             LoadWithHeader_(filepath, opts, edge_load_wrapper, pre_load_func, weight_parse_func);
-        } if (opts.based_index == BasedIndex::BASED_1_TO_0) {
+        } else if (opts.based_index == BasedIndex::BASED_1_TO_0) {
             auto edge_load_wrapper = MakeBased1to0EdgeLoader_(edge_load_func);
             LoadWithHeader_(filepath, opts, edge_load_wrapper, pre_load_func, weight_parse_func);
         } else {
@@ -94,16 +94,16 @@ private:
 
         if constexpr (std::is_same_v<value_t, empty_t>) {
             return [&edge_load_func, reorder_vid](edge_t eidx, vertex_t& src, vertex_t& dst) -> bool {
+                // vertex_t old_src = src, old_dst = dst;
                 src = reorder_vid(src);
                 dst = reorder_vid(dst);
-                // std::cout << "debug: makereorder\n";
+                // LOG_DEBUG("reorder: src=", old_src, "->", src, " dst=", old_dst, "->", dst);
                 return edge_load_func(eidx, src, dst);
             };            
         } else {
             return [&edge_load_func, reorder_vid](edge_t eidx, vertex_t& src, vertex_t& dst, value_t& val) -> bool {
                 src = reorder_vid(src);
                 dst = reorder_vid(dst);
-                // std::cout << "debug: makereorder\n";
                 return edge_load_func(eidx, src, dst, val);
             };
         }
@@ -316,6 +316,7 @@ private:
         } else {
             throw_if_exception(true, "unsupport header cnt: " + std::to_string(opts.header_cnt));
         }
+        LOG_DEBUG("LoadHeader_: num_v=", num_v, " num_e=", num_e);
         pre_load_func(num_v, num_e);
     }
 
@@ -365,11 +366,8 @@ private:
                 continue;
             }
             vertex_t dst = utils::StrToNum<vertex_t>(pToken);
-            if (opts.rm_self_loop && src == dst) {
-                continue;
-            }
 
-            LOG_DEBUG("src=", src, "dst=", dst);
+            LOG_DEBUG("LoadEdges_: src=", src, " dst=", dst);
             if constexpr (std::is_same_v<value_t, empty_t>) {
                 if (edge_load_func(eidx, src, dst)) {
                     ++eidx;
@@ -381,9 +379,8 @@ private:
                     ++eidx;
                 }
             }
-
-            LOG_DEBUG("end of LoadEdges_()");
         }
+        LOG_DEBUG("end of LoadEdges_()");
     }
 
     template <typename edge_load_func_t, 

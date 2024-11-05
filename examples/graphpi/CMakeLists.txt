@@ -1,0 +1,2 @@
+add_executable(graphpi_load graphpi_load.cpp)
+target_link_libraries(graphpi_load graph_mining)

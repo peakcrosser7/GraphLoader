@@ -2,7 +2,6 @@
 
 #include <string>
 #include <vector>
-#include <cassert>
 
 #include "graph_loader/loader.hpp"
 

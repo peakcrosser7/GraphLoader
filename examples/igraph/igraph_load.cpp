@@ -5,7 +5,7 @@
 
 #include "igraph_loader.hpp"
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
     if (argc != 2) {
         std::cout << "Usage: " << argv[0] << " <graph_file>\n";
         return -1;

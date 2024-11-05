@@ -15,7 +15,7 @@ namespace fs = std::filesystem;
 using vidType = int32_t;
 using eidType = int64_t;
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
     LoaderOpts opts = LoaderOpts::WithHeader();
     std::string filepath;
     std::string output_dir;
@@ -25,7 +25,6 @@ int main(int argc, char** argv) {
     app.add_option("-o,--output_dir", output_dir, "output directory to save result");
     app.add_flag("-d,--is_directed", opts.is_directed, "directed graph dataset (defalut 'false')");
     app.add_flag("-r,--reorder", opts.do_reorder, "reorder vertex id in graph dataset to compress (defalut 'false')");
-    app.add_flag("--rm_self", opts.rm_self_loop, "remove self loop edges in graph (defalut 'false')");
     CLI11_PARSE(app, argc, argv);
 
     if (output_dir.empty()) {
