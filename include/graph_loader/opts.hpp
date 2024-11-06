@@ -20,7 +20,6 @@ struct LoaderOpts {
     BasedIndex based_index = BasedIndex::BASED_0_TO_0;
     int header_cnt = 2;
     bool is_directed = false;
-    // bool rm_self_loop = false;
     bool do_reorder = false;
 
     std::function<void(std::string&, LoaderOpts&)> load_banner_func;
@@ -48,7 +47,6 @@ struct LoaderOpts {
         LoaderOpts opts;
         opts.comment_prefix = "%";
         opts.file_ext = ".mtx";
-        // opts.line_sep = " ";
         opts.based_index = BasedIndex::BASED_1_TO_0;
         opts.header_cnt = 3;
 
@@ -66,7 +64,6 @@ struct LoaderOpts {
         LoaderOpts opts;
         opts.file_ext = ".txt";
         opts.comment_prefix = "#";
-        // opts.line_sep = "\t";
         opts.header_cnt = 0;
         opts.do_reorder = true;
 
@@ -75,7 +72,6 @@ struct LoaderOpts {
 
     static LoaderOpts WithHeader() {
         LoaderOpts opts;
-        // opts.line_sep = " ";
         opts.header_cnt = 2;
 
         return opts;

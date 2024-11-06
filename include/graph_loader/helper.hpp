@@ -27,4 +27,9 @@ general_weight_parse(const char* str) {
 
 auto dummy_func = []() -> void {};
 
+
+template<typename T>
+struct DependentFalse : std::false_type {};
+
+
 } // namespace graph_loader

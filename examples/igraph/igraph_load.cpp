@@ -15,6 +15,8 @@ int main(int argc, char* argv[]) {
 
     igraph_t g = IgraphLoader<int, int>::Load(filepath, 
         graph_loader::LoaderOpts::Snap().set_is_directed(false));
+    // igraph_t g = IgraphLoader<int, int>::Load(filepath, 
+    //     graph_loader::LoaderOpts::MatrixMarket());
 
     int num_v = igraph_vcount(&g);
     int num_e = igraph_ecount(&g);

@@ -2,7 +2,10 @@
 
 #include <string>
 #include <fstream>
+#include <unordered_map>
+#include <type_traits>
 
+// #define DEBUG_LOG
 #include "exception.hpp"
 #include "opts.hpp"
 #include "helper.hpp"
@@ -41,19 +44,13 @@ public:
         const pre_load_func_t& pre_load_func = dummy_func,   // void FUNC() OR void FUNC(vertex_t num_v, edge_t num_e)
         const weight_parse_func_t& weight_parse_func = general_weight_parse<weight_t>    // weight_t FUNC(const char* str)
     ) {
+        std::ifstream fin = LoadPrepare_(filepath, opts);
+
         std::unordered_map<vertex_t, vertex_t> reordered_map;
+        vertex_t num_v = LoadHeaderSimulating_(fin, opts, pre_load_func, reordered_map);
+        LOG_DEBUG("LoadWithoutHeader: num_v=", num_v);
 
-        auto pre_load_wrapper = LoadHeaderSimulating_(filepath, opts, pre_load_func, reordered_map);
-
-        if (opts.do_reorder) {
-            auto edge_load_wrapper = MakeReorderedEdgeLoader_(opts.based_index, reordered_map, edge_load_func);
-            LoadWithoutHeader_(filepath, opts, edge_load_wrapper, pre_load_wrapper, weight_parse_func);
-        } else if (opts.based_index == BasedIndex::BASED_1_TO_0) {
-            auto edge_load_wrapper = MakeBased1to0EdgeLoader_(edge_load_func);
-            LoadWithoutHeader_(filepath, opts, edge_load_wrapper, pre_load_wrapper, weight_parse_func);
-        } else {
-            LoadWithoutHeader_(filepath, opts, edge_load_func, pre_load_wrapper, weight_parse_func);
-        }
+        LoadEdgesWithOpts_(fin, opts, num_v, reordered_map, edge_load_func, weight_parse_func);  
     }
 
     template <typename edge_load_func_t, 
@@ -66,17 +63,12 @@ public:
         const pre_load_func_t& pre_load_func = dummy_func,   // void FUNC() OR void FUNC(vertex_t num_v, edge_t num_e)
         const weight_parse_func_t& weight_parse_func = general_weight_parse<weight_t>    // weight_t FUNC(const char* str)
     ) {
-        if (opts.do_reorder) {
-            LOG_DEBUG("LoadWithHeader: will reorder");
-            std::unordered_map<vertex_t, vertex_t> reordered_map;
-            auto edge_load_wrapper = MakeReorderedEdgeLoader_(opts.based_index, reordered_map, edge_load_func);
-            LoadWithHeader_(filepath, opts, edge_load_wrapper, pre_load_func, weight_parse_func);
-        } else if (opts.based_index == BasedIndex::BASED_1_TO_0) {
-            auto edge_load_wrapper = MakeBased1to0EdgeLoader_(edge_load_func);
-            LoadWithHeader_(filepath, opts, edge_load_wrapper, pre_load_func, weight_parse_func);
-        } else {
-            LoadWithHeader_(filepath, opts, edge_load_func, pre_load_func, weight_parse_func);
-        }        
+        std::ifstream fin = LoadPrepare_(filepath, opts);
+
+        std::unordered_map<vertex_t, vertex_t> reordered_map;
+        vertex_t num_v = LoadHeader_(fin, opts, pre_load_func);
+
+        LoadEdgesWithOpts_(fin, opts, num_v, reordered_map, edge_load_func, weight_parse_func);  
     }
 
 private:
@@ -110,18 +102,57 @@ private:
     }
 
     template <typename edge_load_func_t>
-    static auto MakeBased1to0EdgeLoader_(const edge_load_func_t& edge_load_func) {
+    static auto MakeChekingEdgeLoader_(const edge_load_func_t& edge_load_func, vertex_t num_v) {
         if constexpr (std::is_same_v<weight_t, empty_t>) {
-            return [&](edge_t eidx, vertex_t& src, vertex_t& dst) -> bool {
-                throw_if_exception(src == 0, "file is one-indexed but got 0");
-                throw_if_exception(dst == 0, "file is one-indexed but got 0");
-                return edge_load_func(eidx, --src, --dst);
+            return [num_v, &edge_load_func](edge_t eidx, vertex_t& src, vertex_t& dst) -> bool {
+                throw_if_exception(src >= num_v, 
+                                   "src-vertex should smaller than number of vertices, "
+                                   "you need to set `do_reorder=true` in LoaderOpts");
+                throw_if_exception(dst >= num_v, 
+                                   "dst-vertex should smaller than number of vertices, "
+                                   "you need to set `do_reorder=true` in LoaderOpts");
+                return edge_load_func(eidx, src, dst);
             };
         } else {
-            return [&](edge_t eidx, vertex_t& src, vertex_t& dst, weight_t& val) -> bool {
-                throw_if_exception(src == 0, "file is one-indexed but got 0");
-                throw_if_exception(dst == 0, "file is one-indexed but got 0");
-                return edge_load_func(eidx, --src, --dst, val);
+            return [num_v, &edge_load_func](edge_t eidx, vertex_t& src, vertex_t& dst, weight_t& val) -> bool {
+                throw_if_exception(src >= num_v, 
+                                   "src-vertex should smaller than number of vertices, "
+                                   "you need to set `do_reorder=true` in LoaderOpts");
+                throw_if_exception(dst >= num_v, 
+                                   "dst-vertex should smaller than number of vertices, "
+                                   "you need to set `do_reorder=true` in LoaderOpts");
+                return edge_load_func(eidx, src, dst, val);
+            };
+        }  
+    }
+
+    template <typename edge_load_func_t>
+    static auto MakeBased1to0AndCheckingEdgeLoader_(const edge_load_func_t& edge_load_func, vertex_t num_v) {
+        if constexpr (std::is_same_v<weight_t, empty_t>) {
+            return [num_v, &edge_load_func](edge_t eidx, vertex_t& src, vertex_t& dst) -> bool {
+                throw_if_exception(src == 0, "file is one-indexed but got vertex 0");
+                throw_if_exception(dst == 0, "file is one-indexed but got vertex 0");
+                --src, --dst;
+                throw_if_exception(src >= num_v, 
+                                   "src-vertex should smaller than number of vertices, "
+                                   "you need to set `do_reorder=true` in LoaderOpts");
+                throw_if_exception(dst >= num_v, 
+                                   "dst-vertex should smaller than number of vertices, "
+                                   "you need to set `do_reorder=true` in LoaderOpts");
+                return edge_load_func(eidx, src, dst);
+            };
+        } else {
+            return [num_v, &edge_load_func](edge_t eidx, vertex_t& src, vertex_t& dst, weight_t& val) -> bool {
+                throw_if_exception(src == 0, "file is one-indexed but got vertex 0");
+                throw_if_exception(dst == 0, "file is one-indexed but got vertex 0");
+                --src, --dst;
+                throw_if_exception(src >= num_v, 
+                                   "src-vertex should smaller than number of vertices, "
+                                   "you need to set `do_reorder=true` in LoaderOpts");
+                throw_if_exception(dst >= num_v, 
+                                   "dst-vertex should smaller than number of vertices, "
+                                   "you need to set `do_reorder=true` in LoaderOpts");
+                return edge_load_func(eidx, src, dst, val);
             };
         }
     }
@@ -163,80 +194,76 @@ private:
     }
 
     template <typename pre_load_func_t>
-    static auto LoadHeaderSimulating_(
-        const std::string& filepath, 
+    static vertex_t LoadHeaderSimulating_(
+        std::ifstream& fin,
         LoaderOpts& opts,
         const pre_load_func_t& pre_load_func,  // void FUNC(vertex_t num_v, edge_t num_e)
-        std::unordered_map<vertex_t, vertex_t>& reordered_map,
-        std::enable_if_t<std::is_invocable_r_v<void, pre_load_func_t, vertex_t, edge_t>>* = nullptr
+        std::unordered_map<vertex_t, vertex_t>& reordered_map
     ) {
-        vertex_t num_v;
-        edge_t num_edges = 0;
+        vertex_t num_v = std::numeric_limits<vertex_t>::max();
 
-        if constexpr (std::is_same_v<weight_t, empty_t>) {
-            if (opts.do_reorder) {
-                auto get_ve_edge_load_func = [&](edge_t eidx, vertex_t& src, vertex_t& dst) {
-                        // std::cout <<  "num_edges" << num_edges << std::endl;
-                        ++num_edges;
+        if constexpr (std::is_invocable_r_v<void, pre_load_func_t, vertex_t, edge_t>) {
+            edge_t num_e = 0;
+
+            if constexpr (std::is_same_v<weight_t, empty_t>) {
+                if (opts.do_reorder) {
+                    auto get_ve_edge_load_func = [&](edge_t eidx, vertex_t& src, vertex_t& dst) {
+                            ++num_e;
+                            return true;
+                    };
+                    auto get_ve_edge_load_wrapper = MakeReorderedEdgeLoader_(opts.based_index, reordered_map, get_ve_edge_load_func);
+                    LoadEdges_(fin, opts, get_ve_edge_load_wrapper);
+
+                    num_v = reordered_map.size();
+                } else {
+                    vertex_t max_id = -1;
+                    auto get_ve_edge_load_func = [&](edge_t eidx, vertex_t& src, vertex_t& dst) {
+                        max_id = std::max(max_id, src);
+                        max_id = std::max(max_id, dst);
+                        ++num_e;
                         return true;
-                };
-                auto get_ve_edge_load_wrapper = MakeReorderedEdgeLoader_(opts.based_index, reordered_map, get_ve_edge_load_func);
-                LoadWithoutHeader_(filepath, opts, get_ve_edge_load_wrapper);
-
-                num_v = reordered_map.size();
-                // std::cout << "debug: " << num_v << std::endl;
+                    };
+                    LoadEdges_(fin, opts, get_ve_edge_load_func);
+                    
+                    num_v = max_id + (opts.based_index == BasedIndex::BASED_0_TO_0);
+                }
             } else {
-                vertex_t max_id = -1;
-                auto get_ve_edge_load_func = [&](edge_t eidx, vertex_t& src, vertex_t& dst) {
-                    max_id = std::max(max_id, src);
-                    max_id = std::max(max_id, dst);
-                    ++num_edges;
-                    return true;
-                };
-                LoadWithoutHeader_(filepath, opts, get_ve_edge_load_func);
-                
-                num_v = max_id + (opts.based_index == BasedIndex::BASED_0_TO_0);
+                if (opts.do_reorder) {
+                    auto get_ve_edge_load_func = [&](edge_t eidx, vertex_t& src, vertex_t& dst, weight_t& val) {
+                            ++num_e;
+                            return true;
+                    };
+                    auto get_ve_edge_load_wrapper = MakeReorderedEdgeLoader_(opts.based_index, reordered_map, get_ve_edge_load_func);
+                    LoadEdges_(fin, opts, get_ve_edge_load_wrapper);
+
+                    num_v = reordered_map.size();
+                } else {
+                    vertex_t max_id = -1;
+                    auto get_ve_edge_load_func = [&](edge_t eidx, vertex_t& src, vertex_t& dst, weight_t& val) {
+                        max_id = std::max(max_id, src);
+                        max_id = std::max(max_id, dst);
+                        ++num_e;
+                        return true;
+                    };
+                    LoadEdges_(fin, opts, get_ve_edge_load_func);
+                    
+                    num_v = max_id + (opts.based_index == BasedIndex::BASED_0_TO_0);
+                }
             }
+
+            pre_load_func(num_v, num_e);
+
+        } else if constexpr (std::is_invocable_r_v<void, pre_load_func_t>) {
+            pre_load_func();
         } else {
-            if (opts.do_reorder) {
-                auto get_ve_edge_load_func = [&](edge_t eidx, vertex_t& src, vertex_t& dst, weight_t& val) {
-                        // std::cout <<  "num_edges" << num_edges << std::endl;
-                        ++num_edges;
-                        return true;
-                };
-                auto get_ve_edge_load_wrapper = MakeReorderedEdgeLoader_(opts.based_index, reordered_map, get_ve_edge_load_func);
-                LoadWithoutHeader_(filepath, opts, get_ve_edge_load_wrapper);
-
-                num_v = reordered_map.size();
-                // std::cout << "debug: " << num_v << std::endl;
-            } else {
-                vertex_t max_id = -1;
-                auto get_ve_edge_load_func = [&](edge_t eidx, vertex_t& src, vertex_t& dst, weight_t& val) {
-                    max_id = std::max(max_id, src);
-                    max_id = std::max(max_id, dst);
-                    ++num_edges;
-                    return true;
-                };
-                LoadWithoutHeader_(filepath, opts, get_ve_edge_load_func);
-                
-                num_v = max_id + (opts.based_index == BasedIndex::BASED_0_TO_0);
-            }
+            static_assert(DependentFalse<pre_load_func_t>::value, 
+                          "pre_load_func must be callable with either no arguments or two arguments: (vertex_t, edge_t)");
         }
 
-        return [num_v, num_edges, &pre_load_func]() {
-            pre_load_func(num_v, num_edges);
-        };
-    }
+        fin.clear();
+        fin.seekg(0, std::ios::beg);
 
-    template <typename pre_load_func_t>
-    static auto LoadHeaderSimulating_(
-        const std::string& filepath, 
-        LoaderOpts& opts,
-        const pre_load_func_t& pre_load_func,  // void FUNC()
-        std::unordered_map<vertex_t, vertex_t>& reordered_map,
-        std::enable_if_t<std::is_invocable_r_v<void, pre_load_func_t>>* = nullptr
-    ) {
-        return pre_load_func;
+        return num_v;
     }
     
     static void ParseHeader2_(
@@ -296,11 +323,10 @@ private:
     }
 
     template <typename pre_load_func_t>
-    static void LoadHeader_(
+    static vertex_t LoadHeader_(
         std::ifstream& fin, 
         const LoaderOpts& opts, 
-        const pre_load_func_t& pre_load_func,   // void FUNC(vertex_t num_v, edge_t num_e)
-        std::enable_if_t<std::is_invocable_r_v<void, pre_load_func_t, vertex_t, edge_t>>* = nullptr
+        const pre_load_func_t& pre_load_func   // void FUNC(vertex_t num_v, edge_t num_e)
     ) {
         std::string line;
         bool ok = LoadLine_(fin, line, opts);
@@ -308,7 +334,6 @@ private:
 
         vertex_t num_v;
         edge_t num_e;
-        // std::cout << "debug-line:" << line << std::endl;
         if (opts.header_cnt == 2) {
             ParseHeader2_(line, opts.line_sep, num_v, num_e);
         } else if (opts.header_cnt == 3) {
@@ -317,30 +342,26 @@ private:
             throw_if_exception(true, "unsupport header cnt: " + std::to_string(opts.header_cnt));
         }
         LOG_DEBUG("LoadHeader_: num_v=", num_v, " num_e=", num_e);
-        pre_load_func(num_v, num_e);
-    }
 
-    template <typename pre_load_func_t>
-    static void LoadHeader_(
-        std::ifstream& fin, 
-        const LoaderOpts& opts, 
-        const pre_load_func_t& pre_load_func,   // void FUNC()
-        std::enable_if_t<std::is_invocable_r_v<void, pre_load_func_t>>* = nullptr
-    ) {
+        if constexpr (std::is_invocable_r_v<void, pre_load_func_t, vertex_t, edge_t>) {
+            pre_load_func(num_v, num_e);
+        } else if constexpr (std::is_invocable_r_v<void, pre_load_func_t>) {
+            pre_load_func();
+        } else {
+            static_assert(DependentFalse<pre_load_func_t>::value, 
+                          "pre_load_func must be callable with either no arguments or two arguments: (vertex_t, edge_t)");
+        }
 
-        std::string line;
-        bool ok = LoadLine_(fin, line, opts);
-        throw_if_exception(!ok, "LoadLine_ failed when calling LoadHeader_");
+        return num_v;
+    }  
 
-        pre_load_func();
-    }    
-
-    template <typename edge_load_func_t, typename weight_parse_func_t>
+    template <typename edge_load_func_t, 
+              typename weight_parse_func_t = decltype(general_weight_parse<weight_t>)>
     static void LoadEdges_(
         std::ifstream& fin, 
         const LoaderOpts& opts, 
         const edge_load_func_t& edge_load_func,
-        const weight_parse_func_t& weight_parse_func
+        const weight_parse_func_t& weight_parse_func = general_weight_parse<weight_t>
     ) {
         std::string line;
         char* pSave  = nullptr;
@@ -367,7 +388,7 @@ private:
             }
             vertex_t dst = utils::StrToNum<vertex_t>(pToken);
 
-            LOG_DEBUG("LoadEdges_: src=", src, " dst=", dst);
+            LOG_DEBUG("LoadEdges_: eidx=", eidx, " src=", src, " dst=", dst);
             if constexpr (std::is_same_v<weight_t, empty_t>) {
                 if (edge_load_func(eidx, src, dst)) {
                     ++eidx;
@@ -383,37 +404,26 @@ private:
         LOG_DEBUG("end of LoadEdges_()");
     }
 
-    template <typename edge_load_func_t, 
-              typename pre_load_func_t = decltype(dummy_func), 
-              typename weight_parse_func_t = decltype(general_weight_parse<weight_t>)>
-    static void LoadWithoutHeader_(
-        const std::string& filepath, 
-        LoaderOpts& opts,
-        const edge_load_func_t& edge_load_func,     // void FUNC(edge_t& eidx, vertex_t& src, vertex_t& dst, weight_t& val)
-        const pre_load_func_t& pre_load_func = dummy_func,  // void FUNC()
-        const weight_parse_func_t& weight_parse_func = general_weight_parse<weight_t>      // weight_t FUNC(const char* str)
+    template <typename edge_load_func_t, typename weight_parse_func_t>
+    static void LoadEdgesWithOpts_(
+        std::ifstream& fin, 
+        const LoaderOpts& opts, 
+        vertex_t num_v,
+        std::unordered_map<vertex_t, vertex_t>& reordered_map,
+        const edge_load_func_t& edge_load_func,
+        const weight_parse_func_t& weight_parse_func
     ) {
-        std::ifstream fin = LoadPrepare_(filepath, opts);
-
-        pre_load_func();
-
-        LoadEdges_(fin, opts, edge_load_func, weight_parse_func);
-    }
-
-    template <typename edge_load_func_t, 
-              typename pre_load_func_t, 
-              typename weight_parse_func_t = decltype(general_weight_parse<weight_t>)>
-    static void LoadWithHeader_(const std::string& filepath, 
-                LoaderOpts& opts,
-                const edge_load_func_t& edge_load_func,     // void FUNC(edge_t& eidx, vertex_t& src, vertex_t& dst, weight_t& val)
-                const pre_load_func_t& pre_load_func,   // void FUNC() OR void FUNC(vertex_t num_v, edge_t num_e)
-                const weight_parse_func_t& weight_parse_func    // weight_t FUNC(const char* str)
-    ) {
-        std::ifstream fin = LoadPrepare_(filepath, opts);
-
-        LoadHeader_(fin, opts, pre_load_func);
-        
-        LoadEdges_(fin, opts, edge_load_func, weight_parse_func);     
+        if (opts.do_reorder) {
+            LOG_DEBUG("LoadEdgesWithOpts_: will reorder");
+            auto edge_load_wrapper = MakeReorderedEdgeLoader_(opts.based_index, reordered_map, edge_load_func);
+            LoadEdges_(fin, opts, edge_load_wrapper, weight_parse_func);
+        } else if (opts.based_index == BasedIndex::BASED_1_TO_0) {
+            auto edge_load_wrapper = MakeBased1to0AndCheckingEdgeLoader_(edge_load_func, num_v);
+            LoadEdges_(fin, opts, edge_load_wrapper, weight_parse_func);
+        } else {
+            auto edge_load_wrapper = MakeChekingEdgeLoader_(edge_load_func, num_v);
+            LoadEdges_(fin, opts, edge_load_wrapper, weight_parse_func);
+        }   
     }
 };
 
