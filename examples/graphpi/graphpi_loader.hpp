@@ -54,6 +54,7 @@ public:
         return g;
     }
 
+private:
     static void DoOriented_(Graph& g, 
                             std::vector<vertex_t>& degrees,
                             std::vector<std::pair<vertex_t, vertex_t>>& edges,

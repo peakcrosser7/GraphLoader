@@ -25,6 +25,6 @@ general_weight_parse(const char* str) {
     return {};
 }
 
-inline void dummy_func() {};
+auto dummy_func = []() -> void {};
 
 } // namespace graph_loader
