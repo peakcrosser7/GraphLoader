@@ -16,7 +16,7 @@ using vidType = int32_t;
 using eidType = int64_t;
 
 int main(int argc, char* argv[]) {
-    LoaderOpts opts = LoaderOpts::WithHeader();
+    LoaderOpts opts = OptsFactory::WithHeader();
     std::string filepath;
     std::string output_dir;
 

@@ -11,6 +11,7 @@
 #include "helper.hpp"
 #include "log.hpp"
 #include "utils.hpp"
+#include "opts_factory.hpp"
 
 namespace graph_loader {
 

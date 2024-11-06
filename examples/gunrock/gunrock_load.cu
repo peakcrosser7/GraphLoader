@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
     using weight_t = float;
     using csr_t = gunrock::format::csr_t<memory_space_t::device, vertex_t, edge_t, weight_t>;
 
-    auto coo = GunrockLoader<vertex_t, edge_t, weight_t>::Load(filepath, LoaderOpts::MatrixMarket());
+    auto coo = GunrockLoader<vertex_t, edge_t, weight_t>::Load(filepath, OptsFactory::MatrixMarket());
 
     csr_t csr;
     csr.from_coo(coo);

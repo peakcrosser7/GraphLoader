@@ -15,7 +15,8 @@ int main(int argc, char *argv[]) {
 
     std::string filepath = argv[1];
 
-    auto cache = GraphoneLoader<vid_t, eid_t, float>::Load(filepath, LoaderOpts::MatrixMarket());
+    auto cache = GraphoneLoader<vid_t, eid_t, float>::Load(filepath, 
+        OptsFactory::WithoutHeader().set_file_ext(".adj").set_comment_prefix("%"));
     auto g = graph::build<arch_t::cpu, graph_view_t::csr | graph_view_t::normal>(cache);
 
     auto num_v = g.num_vertices();
